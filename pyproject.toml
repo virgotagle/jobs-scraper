@@ -18,6 +18,11 @@ dependencies = [
 ]
 
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["test"]
+asyncio_mode = "auto"
+
 [tool.jobs-scrapers]
 [tool.jobs-scrapers.sites.seek]
 url = "https://www.seek.co.nz/"
