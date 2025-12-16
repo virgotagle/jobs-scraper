@@ -33,3 +33,8 @@ filter = "Python-Developer-jobs"
 min_delay = 2.0
 max_delay = 4.0
 max_concurrent = 2
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.9",
+]
