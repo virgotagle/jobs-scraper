@@ -24,6 +24,7 @@ A modern, async web scraper for job listings with built-in rate limiting, stealt
 - **BeautifulSoup4** for HTML parsing
 - **Tenacity** for retry logic
 - **uv** for dependency management
+- **Ruff** for linting and code quality
 
 ## 📦 Installation
 
@@ -175,11 +176,14 @@ The scraper implements respectful rate limiting to avoid overwhelming target web
 - Monitor logs for any rate limiting errors
 - Respect robots.txt and website terms of service
 
-## 🧪 Testing
+## 🧪 Testing & Linting
 
 ```bash
 # Run tests
 uv run pytest
+
+# Run linting
+uv run ruff check .
 
 # Run tests with coverage
 uv run pytest --cov=src
@@ -187,6 +191,9 @@ uv run pytest --cov=src
 # Run specific test
 uv run pytest test/test_seek.py -v
 ```
+
+### Continuous Integration
+This project uses GitHub Actions for CI. The workflow (`.github/workflows/ci.yml`) automatically runs tests and linting on every push and pull request to `main`.
 
 ## 🚀 Adding New Job Sites
 
@@ -265,7 +272,3 @@ uv run python -m src.app --list-sites
 uv run python -m src.app --site seek --min-delay 1.0 --max-delay 2.0
 ```
 
-
----
-
-Made with ❤️ using Python, Playwright, and modern async patterns.
