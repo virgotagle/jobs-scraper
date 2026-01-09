@@ -24,6 +24,14 @@ class RepositoryInterface(Protocol):
         """Insert job listing with its detailed information."""
         ...
 
+    def insert_job_listing(self, listing_schema: JobListingSchema):
+        """Insert job listing only."""
+        ...
+
+    def get_listings_missing_details(self) -> list[JobListingSchema]:
+        """Get job listings that don't have details yet."""
+        ...
+
     def close(self):
         """Close repository connection."""
         ...

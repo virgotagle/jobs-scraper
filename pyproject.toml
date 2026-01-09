@@ -30,7 +30,7 @@ asyncio_mode = "auto"
 url = "https://www.seek.co.nz/"
 location = "in-All-Auckland"
 category = "jobs-in-information-communication-technology"
-filter = "Python-Developer-jobs"
+filter = ""
 # Rate limiting settings
 min_delay = 2.0
 max_delay = 4.0

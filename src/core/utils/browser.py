@@ -11,7 +11,7 @@ from playwright.async_api import (
     Playwright,
     async_playwright,
 )
-from playwright_stealth import Stealth
+from playwright_stealth import Stealth  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class BrowserHelper:
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
         self.playwright: Optional[Playwright] = None
-        self._stealth_manager = None
+        self._stealth_manager: Any = None
         self._pages: List[Page] = []
 
     async def __aenter__(self) -> "BrowserHelper":
@@ -51,10 +51,14 @@ class BrowserHelper:
                 # Stealth wrapper applies anti-detection to all pages
                 stealth = Stealth(**self.stealth_config)
                 self._stealth_manager = stealth.use_async(async_playwright())
-                self.playwright = await self._stealth_manager.__aenter__()
+                if self._stealth_manager:
+                    self.playwright = await self._stealth_manager.__aenter__()
             else:
                 self._stealth_manager = async_playwright()
                 self.playwright = await self._stealth_manager.__aenter__()
+
+            if not self.playwright:
+                raise RuntimeError("Failed to initialize Playwright")
 
             # Prepare browser launch arguments
             launch_args = {

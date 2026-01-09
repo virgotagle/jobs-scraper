@@ -3,6 +3,7 @@
 import logging
 import os
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
@@ -22,6 +23,16 @@ class BaseRepository(ABC):
         self, listing_schema: JobListingSchema, details_schema: JobDetailsSchema
     ):
         """Insert or update job listing and details in database."""
+        pass
+
+    @abstractmethod
+    def insert_job_listing(self, listing_schema: JobListingSchema):
+        """Insert job listing only."""
+        pass
+
+    @abstractmethod
+    def get_listings_missing_details(self) -> list[JobListingSchema]:
+        """Get job listings that don't have details yet."""
         pass
 
     @abstractmethod
@@ -74,6 +85,40 @@ class SQLiteRepository(BaseRepository):
                 logging.error(f"Failed to insert job {listing_schema.job_id}: {e}")
                 raise RuntimeError(f"Failed to insert job data: {e}") from e
 
+    def insert_job_listing(self, listing_schema: JobListingSchema):
+        """Insert job listing only."""
+        with Session(self.engine) as session:
+            try:
+                existing_listing = session.get(JobListingModel, listing_schema.job_id)
+                if existing_listing:
+                    for key, value in listing_schema.model_dump().items():
+                        setattr(existing_listing, key, value)
+                else:
+                    listing = JobListingModel(**listing_schema.model_dump())
+                    session.add(listing)
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                logging.error(
+                    f"Failed to insert job listing {listing_schema.job_id}: {e}"
+                )
+                raise RuntimeError(f"Failed to insert job listing: {e}") from e
+
+    def get_listings_missing_details(self) -> list[JobListingSchema]:
+        """Get job listings that don't have details yet."""
+        with Session(self.engine) as session:
+            # Query listings that don't have a corresponding details entry
+            listings = (
+                session.query(JobListingModel)
+                .outerjoin(JobDetailsModel)
+                .filter(JobDetailsModel.job_id.is_(None))
+                .all()
+            )
+            return [
+                JobListingSchema.model_validate(listing, from_attributes=True)
+                for listing in listings
+            ]
+
     def close(self):
         """Close database connection and clean up resources."""
         self.engine.dispose()
@@ -82,7 +127,7 @@ class SQLiteRepository(BaseRepository):
 class PostgresRepository(BaseRepository):
     """PostgreSQL database repository for job listings and details."""
 
-    def __init__(self, db_url: str = None) -> None:
+    def __init__(self, db_url: Optional[str] = None) -> None:
         """Initialize repository with database connection.
 
         Args:
@@ -141,6 +186,40 @@ class PostgresRepository(BaseRepository):
                 session.rollback()
                 logging.error(f"Failed to insert job {listing_schema.job_id}: {e}")
                 raise RuntimeError(f"Failed to insert job data: {e}") from e
+
+    def insert_job_listing(self, listing_schema: JobListingSchema):
+        """Insert job listing only."""
+        with Session(self.engine) as session:
+            try:
+                existing_listing = session.get(JobListingModel, listing_schema.job_id)
+                if existing_listing:
+                    for key, value in listing_schema.model_dump().items():
+                        setattr(existing_listing, key, value)
+                else:
+                    listing = JobListingModel(**listing_schema.model_dump())
+                    session.add(listing)
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                logging.error(
+                    f"Failed to insert job listing {listing_schema.job_id}: {e}"
+                )
+                raise RuntimeError(f"Failed to insert job listing: {e}") from e
+
+    def get_listings_missing_details(self) -> list[JobListingSchema]:
+        """Get job listings that don't have details yet."""
+        with Session(self.engine) as session:
+            # Query listings that don't have a corresponding details entry
+            listings = (
+                session.query(JobListingModel)
+                .outerjoin(JobDetailsModel)
+                .filter(JobDetailsModel.job_id.is_(None))
+                .all()
+            )
+            return [
+                JobListingSchema.model_validate(listing, from_attributes=True)
+                for listing in listings
+            ]
 
     def close(self):
         """Close database connection and clean up resources."""

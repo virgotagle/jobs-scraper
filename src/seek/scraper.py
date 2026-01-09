@@ -33,30 +33,45 @@ class SeekScraper:
 
     async def scrape(self, by_category: bool = True) -> None:
         """Scrape all job listings and their details, saving to repository."""
+        await self.scrape_listings(by_category)
+        await self.scrape_details()
+
+    async def scrape_listings(self, by_category: bool = True) -> None:
+        """Scrape job listings and save to repository."""
         job_count = 0
         async with BrowserHelper() as browser:
             page: Page = await browser.new_page()
-            async for job_listing in self.scrape_job_listings(page, by_category):
+            async for job_listing in self.generate_job_listings(page, by_category):
                 job_count += 1
-                logger.debug(
-                    f"Processing job {job_count}: {job_listing.job_id} - {job_listing.title}"
-                )
-                job_details: JobDetailsSchema = await self.scrape_job_details(
-                    page, job_listing.job_details_url
-                )
-                self.repository.insert_listing_with_details(job_listing, job_details)
-                logger.debug(f"Saved job {job_listing} to database")
+                self.repository.insert_job_listing(job_listing)
+
+        logger.info(f"Listing scrape finished: {job_count} listings processed")
+
+    async def scrape_details(self) -> None:
+        """Scrape details for jobs that are missing them."""
+        listings = self.repository.get_listings_missing_details()
+        logger.info(f"Found {len(listings)} jobs missing details")
+
+        async with BrowserHelper() as browser:
+            page: Page = await browser.new_page()
+            for listing in listings:
+                try:
+                    details = await self.scrape_job_details(
+                        page, listing.job_details_url
+                    )
+                    self.repository.insert_listing_with_details(listing, details)
+                except Exception as e:
+                    logger.error(f"Failed to process job {listing.job_id}: {e}")
 
         # Log rate limiting statistics
         stats = self.rate_limiter.get_stats()
-        logger.info(f"Scraping finished: {job_count} total jobs processed")
         logger.info(
             f"Rate limiter stats: {stats['request_count']} requests, "
             f"{stats['total_wait_time']:.1f}s total wait time, "
             f"{stats['avg_wait_time']:.1f}s avg wait time"
         )
 
-    async def scrape_job_listings(
+    async def generate_job_listings(
         self, page: Page, by_category: bool = True
     ) -> AsyncGenerator[JobListingSchema, None]:
         """Generate job listings across all pages until exhausted."""
@@ -72,13 +87,7 @@ class SeekScraper:
             # Seek shows 22 jobs per page when there are more pages
             if len(job_listings) == 22:
                 page_number += 1
-                logger.info(
-                    f"Page {page_number - 1} complete. Moving to page {page_number}"
-                )
             else:
-                logger.info(
-                    f"Page {page_number} complete. Last page reached - stopping pagination"
-                )
                 break
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(5))
@@ -104,19 +113,14 @@ class SeekScraper:
             if query_params:
                 full_url += "?" + urlencode(query_params)
 
-            logger.info(
-                f"Scraping page {page_number} for {self.config['category'] if by_category else self.config['filter']} in {self.config['location']}"
-            )
+            logger.info(f"Scraping page {page_number}")
 
             await page.goto(full_url, wait_until="domcontentloaded")
             await page.wait_for_load_state("networkidle")
             job_listings = self.extractor.extract_job_listings(await page.content())
-            logger.info(f"Found {len(job_listings)} jobs on page {page_number}")
             return job_listings
         except Exception as e:
-            logging.error(
-                f"Failed to scrape job listings for {self.config['category'] if by_category else self.config['filter']} in {self.config['location']} on page {page_number}: {e}"
-            )
+            logging.error(f"Failed to scrape job listings on page {page_number}: {e}")
             raise RuntimeError(f"Failed to scrape job listings: {e}") from e
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(5))
@@ -126,7 +130,6 @@ class SeekScraper:
             # Apply rate limiting before making request
             await self.rate_limiter.acquire()
 
-            logger.debug(f"Fetching job details from: {url}")
             await page.goto(url, wait_until="domcontentloaded")
             await page.wait_for_load_state("networkidle")
             return self.extractor.extract_job_details(await page.content())

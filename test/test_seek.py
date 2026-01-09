@@ -6,7 +6,7 @@ from src.seek.scraper import SeekScraper
 
 
 @pytest.mark.asyncio
-async def test_seek():
+async def test_seek() -> None:
     repo = SQLiteRepository("sqlite:///jobs.db")
     async with BrowserHelper() as browser:
         page: Page = await browser.new_page()

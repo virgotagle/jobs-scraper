@@ -5,7 +5,7 @@ import logging
 import re
 
 from bs4 import BeautifulSoup
-from markdownify import markdownify as md
+from markdownify import markdownify as md  # type: ignore
 
 from src.core.schemas import JobDetailsSchema, JobListingSchema
 

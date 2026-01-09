@@ -1,16 +1,9 @@
 import logging
-import os
-import sys
-
-from sqlalchemy import text
-
-# Add src to path
-sys.path.append("src")
 
 from dotenv import load_dotenv
+from sqlalchemy import text
 
-from core.repositories import get_repository
-from core.schemas import JobDetailsSchema, JobListingSchema
+from src.core.repositories import get_repository
 
 load_dotenv()
 
