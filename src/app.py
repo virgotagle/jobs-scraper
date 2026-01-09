@@ -3,11 +3,10 @@
 import argparse
 import asyncio
 import logging
-from pathlib import Path
 
 from src.core.enums import JobSite
 from src.core.factory import JobScraperFactory
-from src.core.repositories import SQLiteRepository
+from src.core.repositories import get_repository
 
 
 def setup_logging():
@@ -62,13 +61,6 @@ def create_parser():
     return parser
 
 
-def get_database_url():
-    """Get SQLite database URL, creating directory if needed."""
-    db_path = Path("jobs.db")
-    db_path.parent.mkdir(exist_ok=True)
-    return f"sqlite:///{db_path}"
-
-
 async def run_scraper(
     site_name: str, by_category: bool, rate_limit_overrides: dict | None = None
 ):
@@ -77,7 +69,7 @@ async def run_scraper(
     logging.info(f"Starting job scraper for site: {site.value}")
 
     # Create repository
-    repository = SQLiteRepository(db_url=get_database_url())
+    repository = get_repository()
 
     # Create scraper using factory
     scraper = JobScraperFactory.get_scraper(site, repository)

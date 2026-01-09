@@ -7,7 +7,7 @@ A modern, async web scraper for job listings with built-in rate limiting, stealt
 - **🚀 Async/Await Architecture**: High-performance asynchronous scraping
 - **🕵️ Stealth Browsing**: Uses Playwright with stealth mode to avoid detection
 - **⏱️ Built-in Rate Limiting**: Respectful scraping with configurable delays
-- **🗄️ SQLite Database**: Automated data storage with relationship handling
+- **🗄️ SQLite & PostgreSQL Support**: Flexible data storage with seamless switching
 - **🔧 Clean Architecture**: Modular design following SOLID principles
 - **📊 Data Validation**: Pydantic schemas ensure data integrity
 - **🎯 Retry Logic**: Automatic retry with exponential backoff
@@ -20,6 +20,7 @@ A modern, async web scraper for job listings with built-in rate limiting, stealt
 - **Python 3.12+** with modern async/await patterns
 - **Playwright** with stealth mode for browser automation
 - **SQLAlchemy** for database ORM
+- **PostgreSQL** & **SQLite** for data storage
 - **Pydantic** for data validation and serialization
 - **BeautifulSoup4** for HTML parsing
 - **Tenacity** for retry logic
@@ -99,6 +100,26 @@ max_concurrent = 2     # Maximum concurrent requests
 - **Filter**: Update `filter` for specific job types
 - **Rate Limiting**: Adjust delays and concurrency for different scraping speeds
 
+### 🗄️ Database Configuration
+
+The application supports both **SQLite** (default) and **PostgreSQL**.
+
+#### Using PostgreSQL
+Create a `.env` file in the root directory:
+
+```ini
+POSTGRES_USERNAME=admin
+POSTGRES_PASSWORD=admin
+POSTGRES_DATABASE=jobs
+POSTGRES_HOST=localhost
+```
+
+Or set the `DATABASE_URL` environment variable directly.
+
+#### Using SQLite
+Simply remove or comment out the `POSTGRES_*` variables in the `.env` file. The application will default to using `jobs.db` in the local directory.
+
+
 ## 🏗️ Architecture
 
 ### Project Structure
@@ -139,6 +160,11 @@ jobs-scraper/
 - Session state management
 - Robust resource cleanup
 - Anti-detection features
+
+#### **Repository Layer** (`src/core/repositories.py`)
+- **Factory Pattern**: Automatically switches between SQLite and Postgres
+- **BaseRepository**: Abstract interface for consistent data access
+- **Self-Healing**: Auto-initializes database tables
 
 #### **Data Models**
 - **JobListingModel**: Job listing information
