@@ -1,330 +1,283 @@
 # Jobs Scraper
 
-A modern, async web scraper for job listings with built-in rate limiting, stealth browsing, and clean architecture. Currently supports Seek.co.nz with an extensible design for adding more job sites.
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
+[![Code Style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## ✨ Features
+> A CLI tool that aggregates job data from sites like Seek by implementing a two-stage asynchronous scraping pipeline with configurable rate limiting, designed for robust data collection and analysis.
 
-- **🚀 Async/Await Architecture**: High-performance asynchronous scraping
-- **🔄 Two-Stage Scraping**: Decoupled listing discovery and detail extraction for reliability
-- **🕵️ Stealth Browsing**: Uses Playwright with stealth mode to avoid detection
-- **⏱️ Built-in Rate Limiting**: Respectful scraping with configurable delays
-- **🗄️ SQLite & PostgreSQL Support**: Flexible data storage with seamless switching
-- **🔧 Clean Architecture**: Modular design following SOLID principles
-- **📊 Data Validation**: Pydantic schemas ensure data integrity
-- **🎯 Retry Logic**: Automatic retry with exponential backoff
-- **🛠️ Extensible Design**: Easy to add new job sites via factory pattern
-- **📝 Rich Logging**: Comprehensive logging with statistics
-- **⚙️ Configuration-Driven**: Settings managed via `pyproject.toml`
+**Built with**: 🐍 Python 3.12+ • 🎭 Playwright • 🗄️ SQLAlchemy • ⚡ uv
 
-## 🛠️ Tech Stack
+## Overview
 
-- **Python 3.12+** with modern async/await patterns
-- **Playwright** with stealth mode for browser automation
-- **SQLAlchemy** for database ORM
-- **PostgreSQL** & **SQLite** for data storage
-- **Pydantic** for data validation and serialization
-- **BeautifulSoup4** for HTML parsing
-- **Tenacity** for retry logic
-- **uv** for dependency management
-- **Ruff** for linting and code quality
+**Jobs Scraper** solves the challenge of manually aggregating job list data for [Recruiters/Data Analysts]. Traditional scraping approaches are often detected or brittle; this tool implements a robust, stealthy pipeline that respects site limits while ensuring data integrity.
 
-## 📦 Installation
+The system implements a **Two-Stage Pipeline** architecture. First, it discovers and stores job listings. Second, it asynchronously fetches detailed descriptions for each listing. This separation ensures that network interruptions don't cause data loss—the process can be resumed at any time.
 
-### Prerequisites
+Key design decisions include:
 
-- Python 3.12 or higher
-- [uv](https://docs.astral.sh/uv/) package manager
+- **Stealth Automation**: Uses `playwright-stealth` to mimic real user behavior and avoid bot detection mechanisms.
+- **Repository Pattern**: Abstracts data storage, allowing seamless switching between SQLite (local development) and PostgreSQL (production).
+- **Factory Pattern**: Enables easy extension to support new job sites (e.g., LinkedIn, Indeed) without modifying core logic.
 
-### Setup
+## Features
 
-```bash
-# Clone the repository
-git clone <repository-url>
-cd jobs-scraper
+### Core
 
-# Install dependencies using uv
-uv sync
+- ✅ **Two-Stage Scraping**: Decoupled listing discovery and detail extraction.
+- ✅ **Resumable Operations**: Tracks progress in DB; crashes don't mean restarting from zero.
+- ✅ **Multi-Database Support**: First-class support for both SQLite and PostgreSQL.
 
-# Install Playwright browsers
-uv run playwright install
-```
+### Integrations
 
-## 🚀 Usage
+- ✅ **Seek.co.nz**: Full support for job search filtration and detail extraction.
+- 🚧 **LinkedIn**: Planned support.
 
-### Basic Commands
+### Operations
 
-```bash
-# List available job sites
-uv run python -m src.app --list-sites
+- ✅ **Rate Limiting**: Configurable random delays and concurrency limits (Semaphore-based).
+- ✅ **Stealth Mode**: Automated browser fingerprint masking.
+- ✅ **Structured Logging**: Detailed execution logs for debugging.
 
-# Scrape jobs by category (default mode)
-uv run python -m src.app --site seek --by-category
-
-# Scrape jobs by filter
-uv run python -m src.app --site seek
-
-# Custom rate limiting
-uv run python -m src.app --site seek --by-category \
-  --min-delay 1.0 --max-delay 3.0 --max-concurrent 1
-```
-
-### Command Line Options
-
-| Option             | Description                              | Default     |
-| ------------------ | ---------------------------------------- | ----------- |
-| `--site`           | Job site to scrape (`seek`)              | Required    |
-| `--list-sites`     | List all available job sites             | -           |
-| `--by-category`    | Scrape by category instead of filter     | `false`     |
-| `--min-delay`      | Minimum delay between requests (seconds) | From config |
-| `--max-delay`      | Maximum delay between requests (seconds) | From config |
-| `--max-concurrent` | Maximum concurrent requests              | From config |
-
-## ⚙️ Configuration
-
-Configuration is managed through `pyproject.toml`:
-
-```toml
-[tool.jobs-scrapers.sites.seek]
-url = "https://www.seek.co.nz/"
-location = "in-All-Auckland"
-category = "jobs-in-information-communication-technology"
-filter = "Python-Developer-jobs"
-
-# Rate limiting settings
-min_delay = 2.0        # Minimum seconds between requests
-max_delay = 4.0        # Maximum seconds for random delays
-max_concurrent = 2     # Maximum concurrent requests
-```
-
-### Customizing Search Parameters
-
-- **Location**: Change `location` to target different areas (e.g., `"in-All-Wellington"`)
-- **Category**: Modify `category` for different job categories
-- **Filter**: Update `filter` for specific job types
-- **Rate Limiting**: Adjust delays and concurrency for different scraping speeds
-
-### 🗄️ Database Configuration
-
-The application supports both **SQLite** (default) and **PostgreSQL**.
-
-#### Using PostgreSQL
-
-Create a `.env` file in the root directory:
-
-```ini
-POSTGRES_USERNAME=admin
-POSTGRES_PASSWORD=admin
-POSTGRES_DATABASE=jobs
-POSTGRES_HOST=localhost
-```
-
-Or set the `DATABASE_URL` environment variable directly.
-
-#### Using SQLite
-
-Simply remove or comment out the `POSTGRES_*` variables in the `.env` file. The application will default to using `jobs.db` in the local directory.
-
-## 🏗️ Architecture
+## Architecture
 
 ### Project Structure
 
 ```
 jobs-scraper/
 ├── src/
-│   ├── core/                 # Core business logic
-│   │   ├── config.py        # Configuration management
-│   │   ├── enums.py         # Enumerations (JobSite)
-│   │   ├── factory.py       # Scraper factory pattern
-│   │   ├── models.py        # SQLAlchemy database models
-│   │   ├── protocols.py     # Interface definitions
-│   │   ├── rate_limiter.py  # Rate limiting implementation
-│   │   ├── repositories.py  # Data access layer
-│   │   ├── schemas.py       # Pydantic data schemas
-│   │   └── utils/
-│   │       └── browser.py   # Browser automation helper
-│   ├── seek/                # Seek-specific implementation
-│   │   ├── extractor.py     # Data extraction logic
-│   │   └── scraper.py       # Seek scraper implementation
-│   └── app.py               # CLI application entry point
-├── test/                    # Test suite
-├── database/               # SQLite database storage
-├── pyproject.toml          # Project configuration
-└── README.md
+│   ├── app.py               # CLI entry point
+│   ├── core/                # Domain logic & Interfaces
+│   │   ├── entities.py      # (Implied by protocols/models)
+│   │   ├── factory.py       # Scraper instantiation logic
+│   │   ├── models.py        # SQLAlchemy ORM definitions
+│   │   ├── protocols.py     # Scraper/Repo interfaces
+│   │   ├── rate_limiter.py  # Concurrency control
+│   │   ├── repositories.py  # Data access implementations
+│   │   └── utils/           # Shared utilities (Browser, etc)
+│   └── seek/                # Seek.co.nz implementation
+│       ├── extractor.py     # HTML parsing logic
+│       └── scraper.py       # Site-specific orchestration
+├── test/                    # Pytest suite
+├── pyproject.toml           # Config & Dependencies
+└── jobs.db                  # Default local database
 ```
 
-### Key Components
+### Core Components
 
-#### **Scraper Workflow**
+| Component              | Location                    | Responsibility                                         |
+| :--------------------- | :-------------------------- | :----------------------------------------------------- |
+| **JobScraperFactory**  | `src/core/factory.py`       | Instantiates site-specific scrapers based on CLI args. |
+| **SeekScraper**        | `src/seek/scraper.py`       | Implements the scrape workflow for Seek.co.nz.         |
+| **PostgresRepository** | `src/core/repositories.py`  | Handles data persistence for PostgreSQL.               |
+| **BrowserHelper**      | `src/core/utils/browser.py` | Manages Playwright lifecycle and stealth contexts.     |
 
-The scraper operates in two distinct stages:
+## Tech Stack & Patterns
 
-1. **Listing Discovery**: Iterates through pagination to find and save all job listings.
-2. **Detail Extraction**: Processes saved listings that lack details, scraping them individually.
-   This ensures that if the process is interrupted, progress is saved and can be resumed efficiently.
+### Tech Stack
 
-#### **Rate Limiter** (`src/core/rate_limiter.py`)
+| Category       | Technology     | Version  | Purpose                                 |
+| :------------- | :------------- | :------- | :-------------------------------------- |
+| **Language**   | Python         | 3.12+    | Core runtime.                           |
+| **Automation** | Playwright     | ^1.55    | Headless browser automation.            |
+| **ORM**        | SQLAlchemy     | ^2.0     | Database abstraction.                   |
+| **Parsing**    | BeautifulSoup4 | ^4.14    | HTML content extraction.                |
+| **Resilience** | Tenacity       | ^9.1     | Retry logic with backoff.               |
+| **Management** | uv             | _latest_ | Fast Python package installer/resolver. |
 
-- Configurable delays between requests (2-4 seconds by default)
-- Semaphore-based concurrency control
-- Request statistics tracking
-- Respects target website resources
+### Design Patterns
 
-#### **Browser Helper** (`src/core/utils/browser.py`)
+| Pattern               | Location                   | Rationale                                                                                  |
+| :-------------------- | :------------------------- | :----------------------------------------------------------------------------------------- |
+| **Repository**        | `src/core/repositories.py` | Decouples business logic from database implementation (SQLite vs Postgres).                |
+| **Factory**           | `src/core/factory.py`      | Centralizes creation of scraper instances, simplifying the addition of new sites.          |
+| **Strategy/Protocol** | `src/core/protocols.py`    | Defines a strict interface (`ScraperInterface`) that all site implementations must follow. |
 
-- Playwright integration with stealth mode
-- Session state management
-- Robust resource cleanup
-- Anti-detection features
+## Getting Started
 
-#### **Repository Layer** (`src/core/repositories.py`)
+### Prerequisites
 
-- **Factory Pattern**: Automatically switches between SQLite and Postgres
-- **BaseRepository**: Abstract interface for consistent data access
-- **Self-Healing**: Auto-initializes database tables
+| Requirement | Version | Check Command                 |
+| :---------- | :------ | :---------------------------- |
+| Python      | 3.12+   | `python --version`            |
+| uv          | 0.4+    | `uv --version`                |
+| Playwright  | \*      | `uv run playwright --version` |
 
-#### **Data Models**
+### Installation
 
-- **JobListingModel**: Job listing information
-- **JobDetailsModel**: Detailed job descriptions
-- **Pydantic Schemas**: Data validation and serialization
+1.  **Clone the repository**:
 
-## 🗄️ Database Schema
+    ```bash
+    git clone https://github.com/your-org/jobs-scraper.git
+    cd jobs-scraper
+    ```
 
-The scraper stores data in SQLite with the following schema:
+2.  **Install dependencies**:
 
-### job_listings
+    ```bash
+    uv sync
+    ```
 
-- `job_id` (Primary Key)
-- `title`, `company_name`, `location`, `country_code`
-- `job_details_url`, `job_summary`
-- `listing_date`, `salary_label`, `work_type`
-- `job_classification`, `job_sub_classification`, `work_arrangements`
+3.  **Install browser binaries**:
+    ```bash
+    uv run playwright install
+    ```
 
-### job_details
+### Configuration
 
-- `job_id` (Foreign Key → job_listings)
-- `status`, `is_expired`, `is_verified`
-- `details` (Markdown formatted), `expires_at`
+Configuration is managed via `pyproject.toml` (for defaults) and Environment Variables (for secrets/DB).
 
-## 🔍 Rate Limiting
+**1. Database Setup (Optional)**
+By default, the app uses `jobs.db` (SQLite). To use PostgreSQL, create a `.env` file:
 
-The scraper implements respectful rate limiting to avoid overwhelming target websites:
+```ini
+# .env
+DATABASE_URL=postgresql://user:pass@localhost:5432/jobs_db
+# OR
+POSTGRES_USERNAME=admin
+POSTGRES_PASSWORD=secret
+POSTGRES_HOST=localhost
+POSTGRES_DATABASE=jobs
+```
 
-- **Random Delays**: 2-4 seconds between requests (configurable)
-- **Concurrency Control**: Maximum 2 simultaneous requests
-- **Statistics Tracking**: Logs request counts and wait times
-- **CLI Overrides**: Customize rate limiting via command line
+**2. Scraper Defaults**
+Edit `[tool.jobs-scrapers.sites.seek]` in `pyproject.toml` to change default search parameters (URL, category, filters).
 
-### Rate Limiting Best Practices
+### Verify Installation
 
-- Use longer delays during peak hours
-- Reduce concurrency for slower target sites
-- Monitor logs for any rate limiting errors
-- Respect robots.txt and website terms of service
-
-## 🧪 Testing & Linting
+Run a quick status check by listing available sites:
 
 ```bash
-# Run tests
+uv run python -m src.app --list-sites
+# Expected output:
+# Available job sites:
+#   - seek
+```
+
+## Usage
+
+### CLI Commands
+
+**Scrape Jobs (Default Mode)**
+Scrapes using the `filter` defined in configuration.
+
+```bash
+uv run python -m src.app --site seek
+```
+
+**Scrape by Category**
+Uses the broad category search instead of a specific keyword filter.
+
+```bash
+uv run python -m src.app --site seek --by-category
+```
+
+**Custom Rate Limiting**
+Override config defaults for aggressive or polite scraping.
+
+```bash
+uv run python -m src.app --site seek \
+  --min-delay 5.0 \
+  --max-delay 10.0 \
+  --max-concurrent 1
+```
+
+### Data Access
+
+The data is stored in the `job_listings` and `job_details` tables.
+
+**Python Access:**
+
+```python
+from src.core.repositories import SQLiteRepository
+
+repo = SQLiteRepository("sqlite:///jobs.db")
+# Get listings that still need details
+pending = repo.get_listings_missing_details()
+print(f"Pending scrape: {len(pending)}")
+```
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
 uv run pytest
 
-# Run linting
-uv run ruff check .
-
-# Run tests with coverage
-uv run pytest --cov=src
-
-# Run specific test
-uv run pytest test/test_seek.py -v
+# Run with coverage report
+uv run pytest --cov=src --cov-report=html
 ```
 
-### Continuous Integration
+### Code Quality
 
-This project uses GitHub Actions for CI. The workflow (`.github/workflows/ci.yml`) automatically runs tests and linting on every push and pull request to `main`.
-
-## 🚀 Adding New Job Sites
-
-The scraper is designed for easy extension. To add a new job site:
-
-1. **Add to JobSite enum** (`src/core/enums.py`):
-
-```python
-class JobSite(Enum):
-    SEEK = "seek"
-    NEW_SITE = "new_site"  # Add your site
-```
-
-2. **Create site-specific package** (`src/new_site/`):
-
-```python
-# src/new_site/extractor.py
-class NewSiteExtractor:
-    def extract_job_listings(self, html: str) -> list[JobListingSchema]: ...
-    def extract_job_details(self, html: str) -> JobDetailsSchema: ...
-
-# src/new_site/scraper.py
-class NewSiteScraper:
-    def __init__(self, repository: RepositoryInterface): ...
-    async def scrape(self, by_category: bool = False): ...
-```
-
-3. **Update factory** (`src/core/factory.py`):
-
-```python
-def get_scraper(job_site: JobSite, repository: RepositoryInterface):
-    if job_site == JobSite.SEEK:
-        return SeekScraper(repository)
-    elif job_site == JobSite.NEW_SITE:
-        return NewSiteScraper(repository)
-```
-
-4. **Add configuration** (`pyproject.toml`):
-
-```toml
-[tool.jobs-scrapers.sites.new_site]
-url = "https://example.com/"
-# ... site-specific settings
-```
-
-## 📊 Example Output
+We strictly enforce type hints and linting rules.
 
 ```bash
-$ uv run python -m src.app --site seek --by-category
+# Format code
+uv run ruff format .
 
-2025-10-31 11:41:42,402 - INFO - Starting job scraper for site: seek
-2025-10-31 11:41:42,406 - INFO - Rate limiting: 2.0-4.0s delay, max 2 concurrent
-2025-10-31 11:41:42,808 - INFO - Browser launched (headless=True, stealth=True)
-2025-10-31 11:41:43,022 - INFO - Scraping page 1
-2025-10-31 11:41:48,438 - INFO - Found 22 jobs on page 1
-2025-10-31 11:41:50,123 - INFO - Scraping page 2
-...
-2025-10-31 11:42:30,555 - INFO - Listing scrape finished: 156 listings processed
-2025-10-31 11:42:30,560 - INFO - Found 156 jobs missing details
-2025-10-31 11:42:31,100 - INFO - Browser launched (headless=True, stealth=True)
-...
-2025-10-31 11:45:30,556 - INFO - Rate limiter stats: 234 requests, 145.2s total wait time, 1.9s avg wait time
+# Check for linting errors
+uv run ruff check .
+
+# Fix auto-fixable errors
+uv run ruff check --fix .
 ```
 
-## 🐛 Troubleshooting
+### Adding a New Site
+
+1.  **Define Enum**: Add new site to `JobSite` in `src/core/enums.py`.
+2.  **Implement Extractor**: Create `src/newsite/extractor.py` implementing `ExtractorInterface`.
+3.  **Implement Scraper**: Create `src/newsite/scraper.py` implementing `ScraperInterface`.
+4.  **Register Factory**: Update `JobScraperFactory` in `src/core/factory.py` to return your new scraper.
+5.  **Add Config**: Add `[tool.jobs-scrapers.sites.newsite]` to `pyproject.toml`.
+
+## Deployment
+
+### Production Considerations
+
+- **Schedule**: Run via `cron` or a task scheduler (e.g., Airflow).
+- **Database**: robust PostgreSQL instance recommended for >10k listings.
+- **Concurrency**: Set `--max-concurrent` based on your machine's CPU/RAM (Browser instances are heavy).
+- **Headless**: The app runs headless by default. Ensure your environment has necessary system dependencies for Playwright (or use the official Playwright Docker image).
+
+## Troubleshooting
 
 ### Common Issues
 
-**Playwright browsers not installed:**
+<details>
+<summary><strong>Playwright Error: "Executable doesn't exist"</strong></summary>
+
+**Cause**: Browser binaries were not installed after `uv sync`.
+
+**Solution**:
 
 ```bash
 uv run playwright install
 ```
 
-**Module not found errors:**
+</details>
 
-```bash
-# Use the -m flag
-uv run python -m src.app --list-sites
-```
+<details>
+<summary><strong>Database Error: "no such table: job_listings"</strong></summary>
 
-**Rate limiting too aggressive:**
+**Cause**: Repository failed to initialize or DB file path is invalid. The app auto-creates tables on init.
 
-```bash
-# Reduce delays
-uv run python -m src.app --site seek --min-delay 1.0 --max-delay 2.0
-```
+**Solution**:
+Check permissions on the directory. Delete `jobs.db` to force recreation if using SQLite.
+
+</details>
+
+<details>
+<summary><strong>Scraper Hangs/Timeout</strong></summary>
+
+**Cause**: Target site may be blocking requests or loading is slow.
+
+**Solution**:
+Increase delays with `--min-delay 5` or reduce concurrency with `--max-concurrent 1`.
+
+</details>
+
+## License
+
+This project is licensed under the MIT License.
