@@ -1,0 +1,42 @@
+[project]
+name = "jobs-scraper"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.14.2",
+    "markdownify>=1.2.0",
+    "playwright>=1.55.0",
+    "playwright-stealth>=2.0.0",
+    "psycopg2-binary>=2.9.9",
+    "pydantic>=2.12.3",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "python-dotenv>=1.0.1",
+    "requests>=2.32.5",
+    "sqlalchemy>=2.0.44",
+    "tenacity>=9.1.2",
+]
+
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["test"]
+asyncio_mode = "auto"
+
+[tool.jobs-scrapers]
+[tool.jobs-scrapers.sites.seek]
+url = "https://www.seek.co.nz/"
+location = "in-All-Auckland"
+category = "jobs-in-information-communication-technology"
+filter = ""
+# Rate limiting settings
+min_delay = 2.0
+max_delay = 4.0
+max_concurrent = 2
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.9",
+]
